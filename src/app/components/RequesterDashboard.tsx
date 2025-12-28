@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback } from './ui/avatar';
@@ -12,6 +13,11 @@ import {
   Plus,
   ArrowLeft,
   MoreVertical,
+  X,
+  Send,
+  UserPlus,
+  Eye,
+  MessageSquare,
 } from 'lucide-react';
 
 interface RequesterDashboardProps {
@@ -81,6 +87,24 @@ const allRequests = [
 ];
 
 export function RequesterDashboard({ onBack }: RequesterDashboardProps) {
+  // State management for modals and interactions
+  const [showNewRequestModal, setShowNewRequestModal] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<typeof openRequests[0] | null>(null);
+  const [showOptionsMenu, setShowOptionsMenu] = useState<number | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Notifications data
+  const notifications = [
+    { id: 1, message: '5 new volunteers matched for Medical Camp Setup', time: '2 min ago' },
+    { id: 2, message: 'Dr. Sharma confirmed availability', time: '15 min ago' },
+    { id: 3, message: 'Flood Relief Distribution is now fully staffed', time: '1 hour ago' },
+  ];
+
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {
       case 'high':
@@ -107,239 +131,557 @@ export function RequesterDashboard({ onBack }: RequesterDashboardProps) {
     }
   };
 
+  // Handler functions
+  const handleAssignVolunteers = (request: typeof openRequests[0]) => {
+    setSelectedRequest(request);
+    setShowAssignModal(true);
+  };
+
+  const handleViewDetails = (request: typeof openRequests[0]) => {
+    setSelectedRequest(request);
+    setShowDetailsModal(true);
+  };
+
+  const handleMessageAll = (request: typeof openRequests[0]) => {
+    setSelectedRequest(request);
+    setShowMessageModal(true);
+  };
+
+  const handleViewRequest = (requestId: number) => {
+    const request = openRequests.find(r => r.id === requestId) || allRequests.find(r => r.id === requestId);
+    if (request && 'matches' in request) {
+      setSelectedRequest(request);
+      setShowDetailsModal(true);
+    } else {
+      setSuccessMessage(`Viewing request #${requestId}`);
+      setTimeout(() => setSuccessMessage(null), 2000);
+    }
+  };
+
+  const handleConfirmAssign = () => {
+    setSuccessMessage(`Volunteers assigned to ${selectedRequest?.title}!`);
+    setShowAssignModal(false);
+    setSelectedRequest(null);
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
+  const handleSendMessage = () => {
+    setSuccessMessage(`Message sent to all volunteers for ${selectedRequest?.title}!`);
+    setShowMessageModal(false);
+    setSelectedRequest(null);
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              onClick={onBack}
-              className="hover:bg-gray-100"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div>
-              <h2>Requester Dashboard</h2>
-              <p className="text-sm text-gray-600">Kerala State Disaster Management</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <Button className="bg-[#F59E0B] hover:bg-[#D97706]">
-              <Plus className="w-5 h-5 mr-2" />
-              New Request
-            </Button>
-            <Button variant="ghost" className="relative">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full" />
-            </Button>
-            <Avatar>
-              <AvatarFallback className="bg-[#1E3A8A] text-white">KS</AvatarFallback>
-            </Avatar>
-          </div>
+    <>
+      {/* Success Message Toast */}
+      {successMessage && (
+        <div className="fixed top-20 right-6 z-50 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-fade-in">
+          <CheckCircle className="w-5 h-5" />
+          {successMessage}
         </div>
-      </header>
+      )}
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Analytics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl p-6 border border-gray-200">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600">Avg Response Time</span>
-              <Clock className="w-5 h-5 text-[#10B981]" />
+      {/* New Request Modal */}
+      {showNewRequestModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowNewRequestModal(false)}>
+          <div className="bg-white rounded-xl p-6 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold">Create New Request</h3>
+              <Button variant="ghost" size="sm" onClick={() => setShowNewRequestModal(false)}>
+                <X className="w-5 h-5" />
+              </Button>
             </div>
-            <div className="text-3xl mb-1">4 min</div>
-            <div className="flex items-center gap-1 text-sm text-green-600">
-              <TrendingUp className="w-4 h-4" />
-              <span>12% faster</span>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl p-6 border border-gray-200">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600">Match Rate</span>
-              <CheckCircle className="w-5 h-5 text-[#1E3A8A]" />
-            </div>
-            <div className="text-3xl mb-1">87%</div>
-            <div className="flex items-center gap-1 text-sm text-green-600">
-              <TrendingUp className="w-4 h-4" />
-              <span>5% increase</span>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl p-6 border border-gray-200">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600">Active Volunteers</span>
-              <Users className="w-5 h-5 text-[#F59E0B]" />
-            </div>
-            <div className="text-3xl mb-1">142</div>
-            <div className="text-sm text-gray-600">Across 8 requests</div>
-          </div>
-
-          <div className="bg-white rounded-xl p-6 border border-gray-200">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600">Open Requests</span>
-              <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs">
-                3
+            <form onSubmit={e => { e.preventDefault(); setShowNewRequestModal(false); setSuccessMessage('New request created successfully!'); setTimeout(() => setSuccessMessage(null), 3000); }}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Request Title</label>
+                  <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Medical Camp Setup" required />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Location</label>
+                  <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Mumbai Central" required />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Skills Required</label>
+                  <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Medical, Setup (comma separated)" required />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Volunteers Needed</label>
+                  <input type="number" min="1" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="10" required />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Urgency</label>
+                  <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Description</label>
+                  <textarea className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-24" placeholder="Describe the request details..." required />
+                </div>
               </div>
-            </div>
-            <div className="text-3xl mb-1">3</div>
-            <div className="text-sm text-gray-600">2 high priority</div>
+              <div className="flex gap-3 mt-6">
+                <Button type="submit" className="flex-1 bg-[#F59E0B] hover:bg-[#D97706]">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Request
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setShowNewRequestModal(false)}>Cancel</Button>
+              </div>
+            </form>
           </div>
         </div>
+      )}
 
-        {/* Open Requests Section */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h3>Open Requests ({openRequests.length})</h3>
-            <Button variant="outline" size="sm">View History</Button>
+      {/* Notifications Dropdown */}
+      {showNotifications && (
+        <div className="fixed top-16 right-20 z-50 bg-white rounded-xl shadow-xl border border-gray-200 w-80" onClick={e => e.stopPropagation()}>
+          <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+            <h4 className="font-semibold">Notifications</h4>
+            <Button variant="ghost" size="sm" onClick={() => setShowNotifications(false)}>
+              <X className="w-4 h-4" />
+            </Button>
           </div>
-
-          <div className="space-y-6">
-            {openRequests.map((request) => (
-              <div
-                key={request.id}
-                className="bg-white rounded-xl p-6 border border-gray-200"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <h4>{request.title}</h4>
-                      <Badge className={`${getUrgencyColor(request.urgency)} border-0`}>
-                        {request.urgency.toUpperCase()}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-gray-600">
-                      <div className="flex items-center gap-1">
-                        <MapPin className="w-4 h-4" />
-                        {request.location}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        Posted {request.postedTime}
-                      </div>
-                    </div>
-                  </div>
-                  <Button variant="ghost" size="sm">
-                    <MoreVertical className="w-5 h-5" />
-                  </Button>
-                </div>
-
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {request.skills.map((skill) => (
-                    <Badge key={skill} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                      {skill}
-                    </Badge>
-                  ))}
-                </div>
-
-                {/* Progress */}
-                <div className="mb-4">
-                  <div className="flex items-center justify-between text-sm mb-2">
-                    <span className="text-gray-600">Volunteer Progress</span>
-                    <span>
-                      {request.volunteers.confirmed}/{request.volunteers.needed} confirmed
-                    </span>
-                  </div>
-                  <Progress 
-                    value={(request.volunteers.confirmed / request.volunteers.needed) * 100} 
-                    className="h-2"
-                  />
-                  <div className="flex items-center justify-between text-xs text-gray-500 mt-1">
-                    <span>{request.volunteers.matched} matched</span>
-                    <span>{request.volunteers.needed - request.volunteers.confirmed} still needed</span>
-                  </div>
-                </div>
-
-                {/* Matched Volunteers */}
-                <div className="mb-4">
-                  <h5 className="text-sm mb-3">Matched Volunteers</h5>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {request.matches.map((volunteer, idx) => (
-                      <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                        <Avatar className="h-10 w-10">
-                          <AvatarFallback className="bg-[#1E3A8A] text-white text-sm">
-                            {volunteer.name.split(' ').map(n => n[0]).join('')}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm truncate">{volunteer.name}</span>
-                            {volunteer.verified && (
-                              <CheckCircle className="w-3 h-3 text-[#10B981] flex-shrink-0" />
-                            )}
-                          </div>
-                          <div className="text-xs text-gray-600 truncate">{volunteer.specialty}</div>
-                          <div className="text-xs text-gray-500">★ {volunteer.rating}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-3">
-                  <Button className="bg-[#10B981] hover:bg-[#059669]">
-                    <Users className="w-4 h-4 mr-2" />
-                    Assign Volunteers
-                  </Button>
-                  <Button variant="outline">View Details</Button>
-                  <Button variant="outline">Message All</Button>
-                </div>
+          <div className="max-h-64 overflow-y-auto">
+            {notifications.map(notif => (
+              <div key={notif.id} className="p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
+                <p className="text-sm">{notif.message}</p>
+                <p className="text-xs text-gray-500 mt-1">{notif.time}</p>
               </div>
             ))}
           </div>
-        </div>
-
-        {/* All Requests Table */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="p-6 border-b border-gray-200">
-            <h3>All Requests</h3>
+          <div className="p-3 text-center">
+            <Button variant="ghost" size="sm" className="text-blue-600">View All Notifications</Button>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="text-left px-6 py-3 text-sm text-gray-600">Request</th>
-                  <th className="text-left px-6 py-3 text-sm text-gray-600">Status</th>
-                  <th className="text-left px-6 py-3 text-sm text-gray-600">Volunteers</th>
-                  <th className="text-left px-6 py-3 text-sm text-gray-600">Urgency</th>
-                  <th className="text-left px-6 py-3 text-sm text-gray-600">Location</th>
-                  <th className="text-left px-6 py-3 text-sm text-gray-600">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {allRequests.map((request) => (
-                  <tr key={request.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div>{request.title}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge variant="outline" className={getStatusColor(request.status)}>
-                        {request.status}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 text-sm">{request.volunteers}</td>
-                    <td className="px-6 py-4">
-                      <Badge className={`${getUrgencyColor(request.urgency)} border-0 text-xs`}>
-                        {request.urgency}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{request.location}</td>
-                    <td className="px-6 py-4">
-                      <Button variant="ghost" size="sm">
-                        View
-                      </Button>
-                    </td>
-                  </tr>
+        </div>
+      )}
+
+      {/* History Modal */}
+      {showHistoryModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowHistoryModal(false)}>
+          <div className="bg-white rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold">Request History</h3>
+              <Button variant="ghost" size="sm" onClick={() => setShowHistoryModal(false)}>
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+            <div className="space-y-3">
+              {allRequests.map(req => (
+                <div key={req.id} className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium">{req.title}</h4>
+                      <p className="text-sm text-gray-600">{req.location} • {req.volunteers}</p>
+                    </div>
+                    <Badge variant="outline" className={getStatusColor(req.status)}>{req.status}</Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Volunteers Modal */}
+      {showAssignModal && selectedRequest && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowAssignModal(false)}>
+          <div className="bg-white rounded-xl p-6 max-w-lg w-full mx-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold">Assign Volunteers</h3>
+              <Button variant="ghost" size="sm" onClick={() => setShowAssignModal(false)}>
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+            <p className="text-gray-600 mb-4">Select volunteers to assign to <strong>{selectedRequest.title}</strong>:</p>
+            <div className="space-y-2 mb-6">
+              {selectedRequest.matches.map((vol, idx) => (
+                <label key={idx} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                  <input type="checkbox" defaultChecked className="w-4 h-4 text-blue-600 rounded" />
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-[#1E3A8A] text-white text-xs">
+                      {vol.name.split(' ').map(n => n[0]).join('')}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <span className="font-medium">{vol.name}</span>
+                    <span className="text-sm text-gray-500 ml-2">({vol.specialty})</span>
+                  </div>
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-3">
+              <Button className="flex-1 bg-[#10B981] hover:bg-[#059669]" onClick={handleConfirmAssign}>
+                <UserPlus className="w-4 h-4 mr-2" />
+                Confirm Assignment
+              </Button>
+              <Button variant="outline" onClick={() => setShowAssignModal(false)}>Cancel</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Details Modal */}
+      {showDetailsModal && selectedRequest && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowDetailsModal(false)}>
+          <div className="bg-white rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <h3 className="text-xl font-semibold">{selectedRequest.title}</h3>
+                <Badge className={`${getUrgencyColor(selectedRequest.urgency)} border-0`}>
+                  {selectedRequest.urgency.toUpperCase()}
+                </Badge>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setShowDetailsModal(false)}>
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+            <div className="space-y-4">
+              <div className="flex items-center gap-4 text-gray-600">
+                <div className="flex items-center gap-1">
+                  <MapPin className="w-4 h-4" />
+                  {selectedRequest.location}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Clock className="w-4 h-4" />
+                  Posted {selectedRequest.postedTime}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {selectedRequest.skills.map(skill => (
+                  <Badge key={skill} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">{skill}</Badge>
                 ))}
-              </tbody>
-            </table>
+              </div>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-medium mb-2">Volunteer Status</h4>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <div className="text-2xl font-bold text-blue-600">{selectedRequest.volunteers.needed}</div>
+                    <div className="text-sm text-gray-600">Needed</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-yellow-600">{selectedRequest.volunteers.matched}</div>
+                    <div className="text-sm text-gray-600">Matched</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-green-600">{selectedRequest.volunteers.confirmed}</div>
+                    <div className="text-sm text-gray-600">Confirmed</div>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <h4 className="font-medium mb-3">Matched Volunteers</h4>
+                <div className="space-y-2">
+                  {selectedRequest.matches.map((vol, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-10 w-10">
+                          <AvatarFallback className="bg-[#1E3A8A] text-white">
+                            {vol.name.split(' ').map(n => n[0]).join('')}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{vol.name}</span>
+                            {vol.verified && <CheckCircle className="w-4 h-4 text-[#10B981]" />}
+                          </div>
+                          <div className="text-sm text-gray-600">{vol.specialty} • ★ {vol.rating}</div>
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline">Contact</Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <Button className="bg-[#10B981] hover:bg-[#059669]" onClick={() => { setShowDetailsModal(false); handleAssignVolunteers(selectedRequest); }}>
+                <UserPlus className="w-4 h-4 mr-2" />
+                Assign Volunteers
+              </Button>
+              <Button variant="outline" onClick={() => { setShowDetailsModal(false); handleMessageAll(selectedRequest); }}>
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Message All
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Message All Modal */}
+      {showMessageModal && selectedRequest && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowMessageModal(false)}>
+          <div className="bg-white rounded-xl p-6 max-w-lg w-full mx-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold">Message Volunteers</h3>
+              <Button variant="ghost" size="sm" onClick={() => setShowMessageModal(false)}>
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+            <p className="text-gray-600 mb-4">Send a message to all volunteers for <strong>{selectedRequest.title}</strong>:</p>
+            <div className="mb-4">
+              <div className="flex flex-wrap gap-2 mb-3">
+                {selectedRequest.matches.map((vol, idx) => (
+                  <Badge key={idx} variant="outline" className="bg-gray-100">
+                    {vol.name}
+                  </Badge>
+                ))}
+              </div>
+              <textarea
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-32"
+                placeholder="Type your message here..."
+              />
+            </div>
+            <div className="flex gap-3">
+              <Button className="flex-1 bg-[#1E3A8A] hover:bg-[#1E3A8A]/90" onClick={handleSendMessage}>
+                <Send className="w-4 h-4 mr-2" />
+                Send Message
+              </Button>
+              <Button variant="outline" onClick={() => setShowMessageModal(false)}>Cancel</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Options Menu */}
+      {showOptionsMenu !== null && (
+        <div className="fixed inset-0 z-40" onClick={() => setShowOptionsMenu(null)} />
+      )}
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+          <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                onClick={onBack}
+                className="hover:bg-gray-100"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <div>
+                <h2>Requester Dashboard</h2>
+                <p className="text-sm text-gray-600">Kerala State Disaster Management</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <Button className="bg-[#F59E0B] hover:bg-[#D97706]" onClick={() => setShowNewRequestModal(true)}>
+                <Plus className="w-5 h-5 mr-2" />
+                New Request
+              </Button>
+              <Button variant="ghost" className="relative" onClick={() => setShowNotifications(!showNotifications)}>
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full" />
+              </Button>
+              <Avatar>
+                <AvatarFallback className="bg-[#1E3A8A] text-white">KS</AvatarFallback>
+              </Avatar>
+            </div>
+          </div>
+        </header>
+
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          {/* Analytics Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div className="bg-white rounded-xl p-6 border border-gray-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-gray-600">Avg Response Time</span>
+                <Clock className="w-5 h-5 text-[#10B981]" />
+              </div>
+              <div className="text-3xl mb-1">4 min</div>
+              <div className="flex items-center gap-1 text-sm text-green-600">
+                <TrendingUp className="w-4 h-4" />
+                <span>12% faster</span>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl p-6 border border-gray-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-gray-600">Match Rate</span>
+                <CheckCircle className="w-5 h-5 text-[#1E3A8A]" />
+              </div>
+              <div className="text-3xl mb-1">87%</div>
+              <div className="flex items-center gap-1 text-sm text-green-600">
+                <TrendingUp className="w-4 h-4" />
+                <span>5% increase</span>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl p-6 border border-gray-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-gray-600">Active Volunteers</span>
+                <Users className="w-5 h-5 text-[#F59E0B]" />
+              </div>
+              <div className="text-3xl mb-1">142</div>
+              <div className="text-sm text-gray-600">Across 8 requests</div>
+            </div>
+
+            <div className="bg-white rounded-xl p-6 border border-gray-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-gray-600">Open Requests</span>
+                <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs">
+                  3
+                </div>
+              </div>
+              <div className="text-3xl mb-1">3</div>
+              <div className="text-sm text-gray-600">2 high priority</div>
+            </div>
+          </div>
+
+          {/* Open Requests Section */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <h3>Open Requests ({openRequests.length})</h3>
+              <Button variant="outline" size="sm" onClick={() => setShowHistoryModal(true)}>View History</Button>
+            </div>
+
+            <div className="space-y-6">
+              {openRequests.map((request) => (
+                <div
+                  key={request.id}
+                  className="bg-white rounded-xl p-6 border border-gray-200"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <div className="flex items-center gap-3 mb-2">
+                        <h4>{request.title}</h4>
+                        <Badge className={`${getUrgencyColor(request.urgency)} border-0`}>
+                          {request.urgency.toUpperCase()}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <div className="flex items-center gap-1">
+                          <MapPin className="w-4 h-4" />
+                          {request.location}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-4 h-4" />
+                          Posted {request.postedTime}
+                        </div>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm">
+                      <MoreVertical className="w-5 h-5" />
+                    </Button>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {request.skills.map((skill) => (
+                      <Badge key={skill} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                        {skill}
+                      </Badge>
+                    ))}
+                  </div>
+
+                  {/* Progress */}
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between text-sm mb-2">
+                      <span className="text-gray-600">Volunteer Progress</span>
+                      <span>
+                        {request.volunteers.confirmed}/{request.volunteers.needed} confirmed
+                      </span>
+                    </div>
+                    <Progress
+                      value={(request.volunteers.confirmed / request.volunteers.needed) * 100}
+                      className="h-2"
+                    />
+                    <div className="flex items-center justify-between text-xs text-gray-500 mt-1">
+                      <span>{request.volunteers.matched} matched</span>
+                      <span>{request.volunteers.needed - request.volunteers.confirmed} still needed</span>
+                    </div>
+                  </div>
+
+                  {/* Matched Volunteers */}
+                  <div className="mb-4">
+                    <h5 className="text-sm mb-3">Matched Volunteers</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      {request.matches.map((volunteer, idx) => (
+                        <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                          <Avatar className="h-10 w-10">
+                            <AvatarFallback className="bg-[#1E3A8A] text-white text-sm">
+                              {volunteer.name.split(' ').map(n => n[0]).join('')}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm truncate">{volunteer.name}</span>
+                              {volunteer.verified && (
+                                <CheckCircle className="w-3 h-3 text-[#10B981] flex-shrink-0" />
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-600 truncate">{volunteer.specialty}</div>
+                            <div className="text-xs text-gray-500">★ {volunteer.rating}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-3">
+                    <Button className="bg-[#10B981] hover:bg-[#059669]" onClick={() => handleAssignVolunteers(request)}>
+                      <Users className="w-4 h-4 mr-2" />
+                      Assign Volunteers
+                    </Button>
+                    <Button variant="outline" onClick={() => handleViewDetails(request)}>View Details</Button>
+                    <Button variant="outline" onClick={() => handleMessageAll(request)}>Message All</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* All Requests Table */}
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="p-6 border-b border-gray-200">
+              <h3>All Requests</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="text-left px-6 py-3 text-sm text-gray-600">Request</th>
+                    <th className="text-left px-6 py-3 text-sm text-gray-600">Status</th>
+                    <th className="text-left px-6 py-3 text-sm text-gray-600">Volunteers</th>
+                    <th className="text-left px-6 py-3 text-sm text-gray-600">Urgency</th>
+                    <th className="text-left px-6 py-3 text-sm text-gray-600">Location</th>
+                    <th className="text-left px-6 py-3 text-sm text-gray-600">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {allRequests.map((request) => (
+                    <tr key={request.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <div>{request.title}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Badge variant="outline" className={getStatusColor(request.status)}>
+                          {request.status}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4 text-sm">{request.volunteers}</td>
+                      <td className="px-6 py-4">
+                        <Badge className={`${getUrgencyColor(request.urgency)} border-0 text-xs`}>
+                          {request.urgency}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{request.location}</td>
+                      <td className="px-6 py-4">
+                        <Button variant="ghost" size="sm" onClick={() => handleViewRequest(request.id)}>
+                          View
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
