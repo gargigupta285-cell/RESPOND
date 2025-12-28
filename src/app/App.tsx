@@ -3,8 +3,14 @@ import { Landing } from './components/Landing';
 import { RoleSelection } from './components/RoleSelection';
 import { VolunteerDashboard } from './components/VolunteerDashboard';
 import { RequesterDashboard } from './components/RequesterDashboard';
+import { VolunteerOnboarding } from './components/VolunteerOnboarding';
 
-type Screen = 'landing' | 'role-selection' | 'volunteer-dashboard' | 'requester-dashboard';
+type Screen = 
+  | 'landing' 
+  | 'role-selection' 
+  | 'volunteer-onboarding'
+  | 'volunteer-dashboard' 
+  | 'requester-dashboard';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
@@ -16,8 +22,15 @@ export default function App() {
       case 'role-selection':
         return (
           <RoleSelection
-            onSelectVolunteer={() => setCurrentScreen('volunteer-dashboard')}
+            onSelectVolunteer={() => setCurrentScreen('volunteer-onboarding')}
             onSelectRequester={() => setCurrentScreen('requester-dashboard')}
+          />
+        );
+      case 'volunteer-onboarding':
+        return (
+          <VolunteerOnboarding
+            onComplete={() => setCurrentScreen('volunteer-dashboard')}
+            onBack={() => setCurrentScreen('role-selection')}
           />
         );
       case 'volunteer-dashboard':
