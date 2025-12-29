@@ -3,6 +3,12 @@ import cors from 'cors';
 import healthRouter from './routes/health';
 import contactRouter from './routes/contact';
 import volunteerRouter from './routes/volunteer';
+import requestsRouter from './routes/requests';
+import tasksRouter from './routes/tasks';
+import { initializeDatabase } from './db/database';
+
+// Initialize database schema on startup
+initializeDatabase();
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -32,6 +38,8 @@ app.use((req, res, next) => {
 app.use('/api', healthRouter);
 app.use('/api', contactRouter);
 app.use('/api', volunteerRouter);
+app.use('/api', requestsRouter);
+app.use('/api', tasksRouter);
 
 // 404 handler
 app.use((req, res) => {

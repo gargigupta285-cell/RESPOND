@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback } from './ui/avatar';
@@ -18,85 +18,46 @@ import {
   UserPlus,
   Eye,
   MessageSquare,
+  Loader2,
 } from 'lucide-react';
+import { api, RequestData, VolunteerMatch, CreateRequestData } from '../config/api';
 
 interface RequesterDashboardProps {
   onBack: () => void;
 }
 
-const openRequests = [
-  {
-    id: 1,
-    title: 'Medical Camp Setup',
-    location: 'Mumbai Central',
-    skills: ['Medical', 'Setup'],
-    urgency: 'high',
-    volunteers: {
-      needed: 10,
-      matched: 7,
-      confirmed: 5,
-    },
-    postedTime: '3 hours ago',
-    matches: [
-      { name: 'Dr. Sharma', verified: true, rating: 4.9, specialty: 'General Medicine' },
-      { name: 'Dr. Patel', verified: true, rating: 4.8, specialty: 'Pediatrics' },
-      { name: 'Nurse Reddy', verified: true, rating: 5.0, specialty: 'Emergency Care' },
-    ],
-  },
-  {
-    id: 2,
-    title: 'Flood Relief Distribution',
-    location: 'Kerala, Kochi',
-    skills: ['Logistics', 'Driving'],
-    urgency: 'high',
-    volunteers: {
-      needed: 15,
-      matched: 12,
-      confirmed: 10,
-    },
-    postedTime: '1 hour ago',
-    matches: [
-      { name: 'Raj Kumar', verified: true, rating: 4.7, specialty: 'Heavy Vehicle Driver' },
-      { name: 'Amit Singh', verified: true, rating: 4.9, specialty: 'Logistics Manager' },
-    ],
-  },
-  {
-    id: 3,
-    title: 'Community Kitchen Support',
-    location: 'Delhi NCR',
-    skills: ['Cooking', 'Food Safety'],
-    urgency: 'medium',
-    volunteers: {
-      needed: 8,
-      matched: 8,
-      confirmed: 8,
-    },
-    postedTime: '5 hours ago',
-    matches: [
-      { name: 'Priya Menon', verified: true, rating: 5.0, specialty: 'Chef' },
-      { name: 'Rajesh Verma', verified: false, rating: 4.6, specialty: 'Volunteer' },
-    ],
-  },
-];
-
-const allRequests = [
-  { id: 1, title: 'Medical Camp Setup', status: 'active', volunteers: '5/10', urgency: 'high', location: 'Mumbai' },
-  { id: 2, title: 'Flood Relief Distribution', status: 'active', volunteers: '10/15', urgency: 'high', location: 'Kerala' },
-  { id: 3, title: 'Community Kitchen Support', status: 'completed', volunteers: '8/8', urgency: 'medium', location: 'Delhi' },
-  { id: 4, title: 'Blood Donation Drive', status: 'scheduled', volunteers: '0/20', urgency: 'low', location: 'Bangalore' },
-];
-
 export function RequesterDashboard({ onBack }: RequesterDashboardProps) {
-  // State management for modals and interactions
+  // Data state from API
+  const [requests, setRequests] = useState<RequestData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [assignLoading, setAssignLoading] = useState(false);
+  const [matchesLoading, setMatchesLoading] = useState(false);
+  const [matchesError, setMatchesError] = useState<string | null>(null);
+  const [availableMatches, setAvailableMatches] = useState<VolunteerMatch[]>([]);
+  const [selectedVolunteerIds, setSelectedVolunteerIds] = useState<Set<string>>(new Set());
+
+  // UI state for modals and interactions
   const [showNewRequestModal, setShowNewRequestModal] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showMessageModal, setShowMessageModal] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<typeof openRequests[0] | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<RequestData | null>(null);
   const [showOptionsMenu, setShowOptionsMenu] = useState<number | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Form state for new request
+  const [formData, setFormData] = useState({
+    title: '',
+    location: '',
+    skills: '',
+    volunteersNeeded: 1,
+    urgency: 'high',
+    description: '',
+  });
 
   // Notifications data
   const notifications = [
@@ -104,6 +65,36 @@ export function RequesterDashboard({ onBack }: RequesterDashboardProps) {
     { id: 2, message: 'Dr. Sharma confirmed availability', time: '15 min ago' },
     { id: 3, message: 'Flood Relief Distribution is now fully staffed', time: '1 hour ago' },
   ];
+
+  // Fetch requests on mount
+  useEffect(() => {
+    loadRequests();
+  }, []);
+
+  const loadRequests = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await api.getRequests();
+      setRequests(response.data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load requests');
+      console.error('Error loading requests:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Derived data
+  const openRequests = requests.filter(r => r.status === 'open' || r.status === 'active');
+  const allRequests = requests.map(r => ({
+    id: r.id,
+    title: r.title,
+    status: r.status,
+    volunteers: `${r.volunteers.confirmed}/${r.volunteers.needed}`,
+    urgency: r.urgency,
+    location: r.location,
+  }));
 
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {
@@ -121,6 +112,7 @@ export function RequesterDashboard({ onBack }: RequesterDashboardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
+      case 'open':
         return 'bg-blue-100 text-blue-700 border-blue-200';
       case 'completed':
         return 'bg-green-100 text-green-700 border-green-200';
@@ -132,24 +124,42 @@ export function RequesterDashboard({ onBack }: RequesterDashboardProps) {
   };
 
   // Handler functions
-  const handleAssignVolunteers = (request: typeof openRequests[0]) => {
+  const handleAssignVolunteers = async (request: RequestData) => {
     setSelectedRequest(request);
     setShowAssignModal(true);
+    setMatchesLoading(true);
+    setMatchesError(null);
+    setSelectedVolunteerIds(new Set());
+
+    try {
+      const response = await api.getRequestMatches(request.id);
+      setAvailableMatches(response.data);
+      // Pre-select all matches by default
+      const allIds = new Set(response.data.filter(m => m.id).map(m => m.id!));
+      setSelectedVolunteerIds(allIds);
+    } catch (err) {
+      console.error('Error loading matches:', err);
+      setMatchesError(err instanceof Error ? err.message : 'Failed to load volunteers');
+      // Fall back to existing matches from request
+      setAvailableMatches(request.matches);
+    } finally {
+      setMatchesLoading(false);
+    }
   };
 
-  const handleViewDetails = (request: typeof openRequests[0]) => {
+  const handleViewDetails = (request: RequestData) => {
     setSelectedRequest(request);
     setShowDetailsModal(true);
   };
 
-  const handleMessageAll = (request: typeof openRequests[0]) => {
+  const handleMessageAll = (request: RequestData) => {
     setSelectedRequest(request);
     setShowMessageModal(true);
   };
 
-  const handleViewRequest = (requestId: number) => {
-    const request = openRequests.find(r => r.id === requestId) || allRequests.find(r => r.id === requestId);
-    if (request && 'matches' in request) {
+  const handleViewRequest = (requestId: string) => {
+    const request = requests.find(r => r.id === requestId);
+    if (request) {
       setSelectedRequest(request);
       setShowDetailsModal(true);
     } else {
@@ -158,11 +168,25 @@ export function RequesterDashboard({ onBack }: RequesterDashboardProps) {
     }
   };
 
-  const handleConfirmAssign = () => {
-    setSuccessMessage(`Volunteers assigned to ${selectedRequest?.title}!`);
-    setShowAssignModal(false);
-    setSelectedRequest(null);
-    setTimeout(() => setSuccessMessage(null), 3000);
+  const handleConfirmAssign = async () => {
+    if (!selectedRequest) return;
+
+    setAssignLoading(true);
+    try {
+      const volunteerIds = Array.from(selectedVolunteerIds);
+      await api.assignVolunteers(selectedRequest.id, volunteerIds);
+      setSuccessMessage(`Volunteers assigned to ${selectedRequest?.title}!`);
+      setShowAssignModal(false);
+      setSelectedRequest(null);
+      // Reload requests to get updated data
+      await loadRequests();
+    } catch (err) {
+      console.error('Error assigning volunteers:', err);
+      setSuccessMessage('Failed to assign volunteers. Please try again.');
+    } finally {
+      setAssignLoading(false);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    }
   };
 
   const handleSendMessage = () => {
@@ -171,6 +195,71 @@ export function RequesterDashboard({ onBack }: RequesterDashboardProps) {
     setSelectedRequest(null);
     setTimeout(() => setSuccessMessage(null), 3000);
   };
+
+  const handleCreateRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    try {
+      const createData: CreateRequestData = {
+        title: formData.title,
+        description: formData.description,
+        location: formData.location,
+        skills: formData.skills.split(',').map(s => s.trim()).filter(Boolean),
+        urgency: formData.urgency,
+        volunteersNeeded: formData.volunteersNeeded,
+      };
+
+      await api.createRequest(createData);
+      setSuccessMessage('New request created successfully!');
+      setShowNewRequestModal(false);
+      setFormData({ title: '', location: '', skills: '', volunteersNeeded: 1, urgency: 'high', description: '' });
+      // Reload requests
+      await loadRequests();
+    } catch (err) {
+      console.error('Error creating request:', err);
+      setSuccessMessage('Failed to create request. Please try again.');
+    } finally {
+      setSubmitting(false);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    }
+  };
+
+  const toggleVolunteerSelection = (volunteerId: string) => {
+    setSelectedVolunteerIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(volunteerId)) {
+        newSet.delete(volunteerId);
+      } else {
+        newSet.add(volunteerId);
+      }
+      return newSet;
+    });
+  };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-[#1E3A8A]" />
+          <p className="text-gray-600">Loading requests...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error}</p>
+          <Button onClick={loadRequests}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -192,27 +281,61 @@ export function RequesterDashboard({ onBack }: RequesterDashboardProps) {
                 <X className="w-5 h-5" />
               </Button>
             </div>
-            <form onSubmit={e => { e.preventDefault(); setShowNewRequestModal(false); setSuccessMessage('New request created successfully!'); setTimeout(() => setSuccessMessage(null), 3000); }}>
+            <form onSubmit={handleCreateRequest}>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Request Title</label>
-                  <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Medical Camp Setup" required />
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g., Medical Camp Setup"
+                    value={formData.title}
+                    onChange={e => setFormData({ ...formData, title: e.target.value })}
+                    required
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Location</label>
-                  <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Mumbai Central" required />
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g., Mumbai Central"
+                    value={formData.location}
+                    onChange={e => setFormData({ ...formData, location: e.target.value })}
+                    required
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Skills Required</label>
-                  <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Medical, Setup (comma separated)" required />
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g., Medical, Setup (comma separated)"
+                    value={formData.skills}
+                    onChange={e => setFormData({ ...formData, skills: e.target.value })}
+                    required
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Volunteers Needed</label>
-                  <input type="number" min="1" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="10" required />
+                  <input
+                    type="number"
+                    min="1"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="10"
+                    value={formData.volunteersNeeded}
+                    onChange={e => setFormData({ ...formData, volunteersNeeded: parseInt(e.target.value) || 1 })}
+                    required
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Urgency</label>
-                  <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={formData.urgency}
+                    onChange={e => setFormData({ ...formData, urgency: e.target.value })}
+                    required
+                  >
                     <option value="high">High</option>
                     <option value="medium">Medium</option>
                     <option value="low">Low</option>
@@ -220,13 +343,19 @@ export function RequesterDashboard({ onBack }: RequesterDashboardProps) {
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Description</label>
-                  <textarea className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-24" placeholder="Describe the request details..." required />
+                  <textarea
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-24"
+                    placeholder="Describe the request details..."
+                    value={formData.description}
+                    onChange={e => setFormData({ ...formData, description: e.target.value })}
+                    required
+                  />
                 </div>
               </div>
               <div className="flex gap-3 mt-6">
-                <Button type="submit" className="flex-1 bg-[#F59E0B] hover:bg-[#D97706]">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Request
+                <Button type="submit" className="flex-1 bg-[#F59E0B] hover:bg-[#D97706]" disabled={submitting}>
+                  {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
+                  {submitting ? 'Creating...' : 'Create Request'}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => setShowNewRequestModal(false)}>Cancel</Button>
               </div>
@@ -296,26 +425,56 @@ export function RequesterDashboard({ onBack }: RequesterDashboardProps) {
               </Button>
             </div>
             <p className="text-gray-600 mb-4">Select volunteers to assign to <strong>{selectedRequest.title}</strong>:</p>
-            <div className="space-y-2 mb-6">
-              {selectedRequest.matches.map((vol, idx) => (
-                <label key={idx} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
-                  <input type="checkbox" defaultChecked className="w-4 h-4 text-blue-600 rounded" />
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-[#1E3A8A] text-white text-xs">
-                      {vol.name.split(' ').map(n => n[0]).join('')}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <span className="font-medium">{vol.name}</span>
-                    <span className="text-sm text-gray-500 ml-2">({vol.specialty})</span>
-                  </div>
-                </label>
-              ))}
-            </div>
+
+            {matchesLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-[#1E3A8A]" />
+                <span className="ml-2 text-gray-600">Loading matches...</span>
+              </div>
+            ) : matchesError ? (
+              <div className="py-4 text-center">
+                <p className="text-red-500 mb-2">{matchesError}</p>
+                <Button variant="outline" size="sm" onClick={() => selectedRequest && handleAssignVolunteers(selectedRequest)}>Retry</Button>
+              </div>
+            ) : (
+              <div className="space-y-2 mb-6">
+                {availableMatches.length > 0 ? availableMatches.map((vol) => (
+                  <label key={vol.id || vol.name} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                    <input
+                      type="checkbox"
+                      checked={vol.id ? selectedVolunteerIds.has(vol.id) : false}
+                      onChange={() => vol.id && toggleVolunteerSelection(vol.id)}
+                      className="w-4 h-4 text-blue-600 rounded"
+                    />
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-[#1E3A8A] text-white text-xs">
+                        {vol.name.split(' ').map(n => n[0]).join('')}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{vol.name}</span>
+                        {vol.verified && <CheckCircle className="w-3 h-3 text-[#10B981]" />}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {vol.specialty} • ★ {vol.rating.toFixed(1)}
+                      </div>
+                    </div>
+                  </label>
+                )) : (
+                  <p className="text-gray-500 text-center py-4">No matching volunteers found.</p>
+                )}
+              </div>
+            )}
+
             <div className="flex gap-3">
-              <Button className="flex-1 bg-[#10B981] hover:bg-[#059669]" onClick={handleConfirmAssign}>
-                <UserPlus className="w-4 h-4 mr-2" />
-                Confirm Assignment
+              <Button
+                className="flex-1 bg-[#10B981] hover:bg-[#059669]"
+                onClick={handleConfirmAssign}
+                disabled={assignLoading || selectedVolunteerIds.size === 0}
+              >
+                {assignLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <UserPlus className="w-4 h-4 mr-2" />}
+                {assignLoading ? 'Assigning...' : 'Confirm Assignment'}
               </Button>
               <Button variant="outline" onClick={() => setShowAssignModal(false)}>Cancel</Button>
             </div>
@@ -516,18 +675,18 @@ export function RequesterDashboard({ onBack }: RequesterDashboardProps) {
                 <Users className="w-5 h-5 text-[#F59E0B]" />
               </div>
               <div className="text-3xl mb-1">142</div>
-              <div className="text-sm text-gray-600">Across 8 requests</div>
+              <div className="text-sm text-gray-600">Across {requests.length} requests</div>
             </div>
 
             <div className="bg-white rounded-xl p-6 border border-gray-200">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-gray-600">Open Requests</span>
                 <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs">
-                  3
+                  {openRequests.length}
                 </div>
               </div>
-              <div className="text-3xl mb-1">3</div>
-              <div className="text-sm text-gray-600">2 high priority</div>
+              <div className="text-3xl mb-1">{openRequests.length}</div>
+              <div className="text-sm text-gray-600">{openRequests.filter(r => r.urgency === 'high').length} high priority</div>
             </div>
           </div>
 

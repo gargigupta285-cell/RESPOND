@@ -92,6 +92,64 @@ export async function apiClient<T = unknown>(
 }
 
 /**
+ * API Data Types for Dashboard Integration
+ */
+export interface VolunteerMatch {
+    id?: string;
+    name: string;
+    verified: boolean;
+    rating: number;
+    specialty: string;
+    skills?: string[];
+    tasksCompleted?: number;
+}
+
+export interface RequestData {
+    id: string;
+    title: string;
+    description?: string;
+    location: string;
+    skills: string[];
+    urgency: string;
+    status: string;
+    volunteers: { needed: number; matched: number; confirmed: number };
+    postedTime: string;
+    organizationName?: string;
+    matches: VolunteerMatch[];
+}
+
+export interface VolunteerStats {
+    tasksCompleted: number;
+    hoursServed: number;
+    rating: number;
+}
+
+export interface VolunteerTask {
+    id: string;
+    status: string;
+    assignedAt: string;
+    acceptedAt?: string;
+    completedAt?: string;
+    request: {
+        id: string;
+        title: string;
+        location: string;
+        urgency: string;
+        postedTime?: string;
+    };
+}
+
+export interface CreateRequestData {
+    title: string;
+    description?: string;
+    location: string;
+    skills: string[];
+    urgency: string;
+    volunteersNeeded: number;
+    organizationName?: string;
+}
+
+/**
  * Convenience methods for common API operations
  */
 export const api = {
@@ -122,4 +180,69 @@ export const api = {
             method: 'POST',
             body: JSON.stringify(data),
         }),
+
+    // ============================================
+    // Request APIs
+    // ============================================
+
+    /**
+     * Get all requests
+     */
+    getRequests: () => apiClient<RequestData[]>('/api/requests'),
+
+    /**
+     * Create a new request
+     */
+    createRequest: (data: CreateRequestData) =>
+        apiClient<RequestData>('/api/requests', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        }),
+
+    /**
+     * Get matching volunteers for a request
+     */
+    getRequestMatches: (id: string) =>
+        apiClient<VolunteerMatch[]>(`/api/requests/${id}/matches`),
+
+    /**
+     * Assign volunteers to a request
+     */
+    assignVolunteers: (id: string, volunteerIds: string[]) =>
+        apiClient<{ requestId: string; assignmentsCreated: number }>(
+            `/api/requests/${id}/assign`,
+            {
+                method: 'POST',
+                body: JSON.stringify({ volunteerIds }),
+            }
+        ),
+
+    // ============================================
+    // Volunteer APIs
+    // ============================================
+
+    /**
+     * Get volunteer stats
+     */
+    getVolunteerStats: (id: string) =>
+        apiClient<VolunteerStats>(`/api/volunteers/${id}/stats`),
+
+    /**
+     * Get volunteer tasks
+     */
+    getVolunteerTasks: (id: string) =>
+        apiClient<VolunteerTask[]>(`/api/volunteers/${id}/tasks`),
+
+    // ============================================
+    // Task APIs
+    // ============================================
+
+    /**
+     * Accept a task assignment
+     */
+    acceptTask: (id: string) =>
+        apiClient<{ id: string; status: string; acceptedAt: string }>(
+            `/api/tasks/${id}/accept`,
+            { method: 'PUT' }
+        ),
 };
