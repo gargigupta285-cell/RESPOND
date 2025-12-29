@@ -9,7 +9,7 @@ interface ContactEntry {
 
 const contactSubmissions: ContactEntry[] = [];
 
-export default function handler(req, res) {
+export default function handler(req: any, res: any) {
   if (req.method === 'POST') {
     try {
         const { name, email, message } = req.body;

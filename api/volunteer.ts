@@ -43,7 +43,7 @@ interface VolunteerRegistration {
 // In-memory storage for volunteer registrations
 const volunteerRegistrations: VolunteerRegistration[] = [];
 
-export default function handler(req, res) {
+export default function handler(req: any, res: any) {
   const url = req.url;
   const path = url.split('?')[0];
 
